@@ -3,83 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Cave - Version Stable</title>
+    <title>Ma Cave - Test Final</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-black text-white p-5">
-    <h1 class="text-2xl font-bold text-amber-500 mb-5">🥃 MA CAVE PRO</h1>
+<body class="bg-zinc-950 text-white p-5 font-sans">
+    <h1 class="text-2xl font-bold text-amber-500 mb-6 uppercase tracking-tighter text-center">🥃 My Digital Cellar</h1>
     
-    <div class="bg-zinc-900 p-6 rounded-2xl border-2 border-dashed border-zinc-700 text-center mb-10">
+    <div class="bg-zinc-900 p-8 rounded-3xl border-2 border-dashed border-zinc-800 text-center mb-8">
         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-        <button onclick="document.getElementById('cameraInput').click()" class="bg-amber-600 text-black font-bold py-4 px-8 rounded-xl w-full">
+        <button onclick="document.getElementById('cameraInput').click()" class="bg-amber-500 hover:bg-amber-400 text-black font-black py-4 px-8 rounded-2xl w-full transition-all active:scale-95">
             📸 SCANNER UNE BOUTEILLE
         </button>
+        <div id="status" class="mt-4 text-[10px] text-zinc-500 uppercase tracking-widest italic">Prêt pour le scan</div>
     </div>
 
-    <div id="bottleList" class="space-y-4"></div>
+    <div id="bottleList" class="space-y-4 pb-20"></div>
 
-    <div id="loader" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center">
-        <div class="w-12 h-12 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-amber-600">L'IA analyse la bouteille...</p>
+    <div id="loader" class="hidden fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50">
+        <div class="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p id="loaderText" class="text-amber-500 font-bold animate-pulse uppercase text-xs tracking-widest">Analyse en cours...</p>
     </div>
 
     <script>
-        // === METS TA CLÉ ICI ===
-        const API_KEY = "AIzaSyBPq8gTvz_OyXSWQrHxMktuSz-5DHggT9o"; 
+        // === CONFIGURATION ===
+        const API_KEY = "METS_TA_CLE_ICI"; 
+        // =====================
 
-        let cave = JSON.parse(localStorage.getItem('maCaveDB')) || [];
+        let cave = JSON.parse(localStorage.getItem('maCaveDB_v3')) || [];
+
+        function updateStatus(msg) {
+            document.getElementById('status').innerText = msg;
+            console.log(msg);
+        }
 
         document.getElementById('cameraInput').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
+            updateStatus("Lecture du fichier...");
             document.getElementById('loader').classList.remove('hidden');
+            
             const reader = new FileReader();
+            reader.readAsDataURL(file);
             
             reader.onload = async () => {
+                updateStatus("Image prête. Envoi à l'IA...");
                 const base64Image = reader.result.split(',')[1];
                 
-                // On essaie d'abord gemini-1.5-flash, puis gemini-pro-vision si ça rate
                 try {
-                    const data = await appelerIA("gemini-1.5-flash", base64Image);
-                    ajouterALaCave(data);
-                } catch (err) {
-                    try {
-                        // DEUXIÈME TENTATIVE AVEC UN AUTRE MODÈLE
-                        const data = await appelerIA("gemini-pro-vision", base64Image);
-                        ajouterALaCave(data);
-                    } catch (err2) {
-                        alert("Erreur critique : " + err2.message);
+                    // Test direct sur le modèle stable v1
+                    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            contents: [{ parts: [
+                                { text: "Réponds UNIQUEMENT en JSON : {\"nom\":\"...\",\"type\":\"Whisky ou Rhum\",\"prix\":\"...\",\"histoire\":\"...\",\"note\":80}" },
+                                { inlineData: { mimeType: "image/jpeg", data: base64Image } }
+                            ]}]
+                        })
+                    });
+
+                    const json = await response.json();
+                    
+                    if (json.error) {
+                        throw new Error("Google dit : " + json.error.message);
                     }
+
+                    updateStatus("Réponse reçue ! Traitement...");
+                    let text = json.candidates[0].content.parts[0].text;
+                    // Nettoyage de sécurité
+                    text = text.replace(/```json|```/g, "").trim();
+                    const b = JSON.parse(text);
+                    
+                    cave.unshift({ ...b, id: Date.now() });
+                    localStorage.setItem('maCaveDB_v3', JSON.stringify(cave));
+                    render();
+                    updateStatus("Bouteille ajoutée !");
+                    
+                } catch (err) {
+                    alert("ERREUR : " + err.message);
+                    updateStatus("Erreur détectée.");
                 } finally {
                     document.getElementById('loader').classList.add('hidden');
                 }
             };
-            reader.readAsDataURL(file);
         };
 
-        async function appelerIA(modelName, base64Data) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
-            
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    contents: [{ parts: [
-                        { text: "Donne les infos de cette bouteille en JSON pur : { \"nom\": \"...\", \"type\": \"Whisky/Rhum\", \"prix\": \"...\", \"histoire\": \"...\", \"note\": 80 }" },
-                        { inlineData: { mimeType: "image/jpeg", data: base64Data } }
-                    ]}]
-                })
-            });
-
-            const json = await response.json();
-            if (json.error) throw new Error(json.error.message);
-            
-            let text = json.candidates[0].content.parts[0].text;
-            text = text.replace(/```json|```/g, "").trim();
-            return JSON.parse(text);
+        function render() {
+            const container = document.getElementById('bottleList');
+            if (cave.length === 0) {
+                container.innerHTML = '<p class="text-center text-zinc-700 mt-10 italic">Aucune bouteille dans la cave.</p>';
+                return;
+            }
+            container.innerHTML = cave.map(b => `
+                <div class="bg-zinc-900 p-5 rounded-2xl border-l-4 border-amber-500 shadow-xl">
+                    <div class="flex justify-between items-start">
+                        <h2 class="text-lg font-bold text-white">${b.nom}</h2>
+                        <span class="bg-amber-500/10 text-amber-500 text-[10px] font-bold px-2 py-1 rounded-md border border-amber-500/20">${b.note}/100</span>
+                    </div>
+                    <p class="text-amber-500 text-[10px] uppercase font-black mt-1 tracking-widest">${b.type}</p>
+                    <p class="text-zinc-400 text-xs mt-3 leading-relaxed">"${b.histoire}"</p>
+                    <div class="mt-4 flex justify-between items-center border-t border-zinc-800 pt-3">
+                        <span class="text-xs text-zinc-500 font-bold uppercase tracking-tighter">Prix Moyen</span>
+                        <span class="text-white font-bold text-sm">${b.prix}</span>
+                    </div>
+                </div>
+            `).join('');
         }
-
-        function ajouterALaCave(b) {
-            cave.unshift({ ...b, id: Date.now() });
-            localStorage.setItem('maCaveDB', JSON.stringify(cave));
+        render();
+    </script>
+</body>
+</html>
