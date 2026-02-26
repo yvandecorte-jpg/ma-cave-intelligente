@@ -3,66 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Cave Pro</title>
+    <title>Ma Cave Pro - Debug</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #0a0a0a; color: #e5e5e5; font-family: sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .amber { color: #d4af37; }
-    </style>
 </head>
-<body class="max-w-md mx-auto p-5">
+<body class="bg-zinc-950 text-white p-5">
 
-    <header class="flex justify-between items-center mb-8 pt-4">
-        <h1 class="text-xl font-bold tracking-tighter italic uppercase">MY<span class="amber">CELLAR</span></h1>
-        <div class="bg-zinc-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase">
-            <span id="count">0</span> BOUTEILLES
-        </div>
-    </header>
+    <h1 class="text-xl font-black text-center mb-8 amber tracking-tighter uppercase">🥃 My Cellar Debug</h1>
 
-    <div class="glass p-8 rounded-3xl text-center mb-8 border-2 border-dashed border-zinc-800">
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-        <button onclick="document.getElementById('cameraInput').click()" class="bg-[#d4af37] text-black w-full py-4 rounded-xl font-black shadow-lg active:scale-95 transition-transform">
-            📸 SCANNER UNE BOUTEILLE
+    <div class="bg-zinc-900 p-6 rounded-3xl mb-8 border border-zinc-800">
+        <p class="text-[10px] font-bold text-amber-500 uppercase mb-3">1. Configuration de la clé</p>
+        <input type="text" id="keyInput" placeholder="Coller la clé AIza..." 
+               class="w-full bg-black border border-zinc-700 p-4 rounded-xl text-xs mb-4 focus:border-amber-500 outline-none">
+        <button onclick="validerCle()" class="w-full bg-white text-black font-bold py-3 rounded-xl text-xs uppercase">
+            Enregistrer et Vérifier
         </button>
+        <p id="keyStatus" class="text-[9px] mt-2 text-center text-zinc-500 italic">Aucune clé enregistrée</p>
     </div>
 
-    <div id="bottleList" class="space-y-4 mb-20"></div>
-
-    <div class="glass p-4 rounded-2xl mt-10 opacity-50 focus-within:opacity-100 transition-opacity">
-        <p class="text-[10px] font-bold uppercase mb-2 text-zinc-500">Configuration API</p>
-        <input type="password" id="keyInput" placeholder="Coller votre clé AIza... ici" class="w-full bg-black border border-zinc-800 p-3 rounded-lg text-xs text-white mb-2">
-        <button onclick="saveKey()" class="text-[10px] bg-zinc-800 px-4 py-2 rounded-lg font-bold uppercase hover:bg-zinc-700">Enregistrer la clé</button>
+    <div id="scanZone" class="opacity-30 pointer-events-none transition-opacity duration-500 bg-zinc-900 p-8 rounded-3xl text-center border-2 border-dashed border-zinc-700">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        <button onclick="document.getElementById('cameraInput').click()" class="bg-amber-500 text-black w-full py-5 rounded-2xl font-black">
+            📸 SCANNER LA BOUTEILLE
+        </button>
+        <p class="text-[9px] mt-4 text-zinc-500 uppercase">L'IA Gemini 2.5 Flash s'activera ici</p>
     </div>
+
+    <div id="bottleList" class="mt-8 space-y-4 pb-20"></div>
 
     <div id="loader" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50">
-        <div class="w-10 h-10 border-4 border-[#d4af37] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="amber font-bold text-xs uppercase tracking-widest">Analyse en cours...</p>
+        <div class="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-amber-500 font-bold text-xs uppercase animate-pulse">Analyse en cours...</p>
     </div>
 
     <script>
-        let inventory = JSON.parse(localStorage.getItem('myCellarDB_v4')) || [];
+        let inventory = JSON.parse(localStorage.getItem('myCellarDB_v5')) || [];
         
-        // Charger la clé au démarrage
-        const savedKey = localStorage.getItem('maCleIA_v4');
-        if (savedKey) document.getElementById('keyInput').value = savedKey;
-
-        function saveKey() {
-            const val = document.getElementById('keyInput').value.trim();
-            if (val) {
-                localStorage.setItem('maCleIA_v4', val);
-                alert("Clé enregistrée avec succès !");
+        // Au démarrage, on vérifie si une clé existe
+        window.onload = () => {
+            const stored = localStorage.getItem('maCleIA_v5');
+            if (stored) {
+                document.getElementById('keyInput').value = stored;
+                activerScan();
             }
+            render();
+        };
+
+        function validerCle() {
+            let input = document.getElementById('keyInput').value.trim();
+            // Nettoyage radical : on enlève les espaces, les sauts de ligne et les guillemets
+            input = input.replace(/[\s"']/g, "");
+            
+            if (input.startsWith("AIza")) {
+                localStorage.setItem('maCleIA_v5', input);
+                document.getElementById('keyStatus').innerText = "✅ Clé formatée et enregistrée !";
+                document.getElementById('keyStatus').classList.replace('text-zinc-500', 'text-green-500');
+                activerScan();
+                alert("La clé est prête. Vous pouvez maintenant scanner !");
+            } else {
+                alert("La clé doit commencer par 'AIza'. Vérifiez votre copier-coller.");
+            }
+        }
+
+        function activerScan() {
+            document.getElementById('scanZone').classList.remove('opacity-30', 'pointer-events-none');
         }
 
         document.getElementById('cameraInput').onchange = async (e) => {
             const file = e.target.files[0];
-            const API_KEY = localStorage.getItem('maCleIA_v4');
-
-            if (!API_KEY) {
-                alert("Erreur : Veuillez d'abord coller votre clé API en bas de la page et cliquer sur Enregistrer.");
-                return;
-            }
+            const API_KEY = localStorage.getItem('maCleIA_v5');
 
             document.getElementById('loader').classList.remove('hidden');
             const reader = new FileReader();
@@ -70,7 +78,7 @@
             reader.onload = async () => {
                 const base64Image = reader.result.split(',')[1];
                 try {
-                    // Utilisation de gemini-2.5-flash comme vu sur ta capture
+                    // Utilisation forcée du modèle 2.5 Flash (2026)
                     const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
                     
                     const response = await fetch(URL, {
@@ -78,24 +86,30 @@
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
                             contents: [{ parts: [
-                                { text: "Réponds UNIQUEMENT en JSON : {\"nom\":\"...\",\"type\":\"Whisky ou Rhum\",\"prix\":\"...\",\"histoire\":\"...\",\"note\":80}" },
+                                { text: "JSON ONLY: {\"nom\":\"...\",\"type\":\"Whisky ou Rhum\",\"prix\":\"...\",\"histoire\":\"...\",\"note\":80}" },
                                 { inlineData: { mimeType: "image/jpeg", data: base64Image } }
                             ]}]
                         })
                     });
 
                     const data = await response.json();
-                    if (data.error) throw new Error(data.error.message);
+                    
+                    if (data.error) {
+                        if (data.error.message.includes("API key")) {
+                            throw new Error("La clé est refusée par Google. Vérifiez qu'elle n'est pas expirée ou supprimée dans AI Studio.");
+                        }
+                        throw new Error(data.error.message);
+                    }
 
                     let text = data.candidates[0].content.parts[0].text;
                     text = text.replace(/```json|```/g, "").trim();
                     const b = JSON.parse(text);
                     
                     inventory.unshift({ ...b, id: Date.now() });
-                    localStorage.setItem('myCellarDB_v4', JSON.stringify(inventory));
+                    localStorage.setItem('myCellarDB_v5', JSON.stringify(inventory));
                     render();
                 } catch (err) {
-                    alert("Erreur : " + err.message);
+                    alert("ERREUR : " + err.message);
                 } finally {
                     document.getElementById('loader').classList.add('hidden');
                 }
@@ -105,23 +119,14 @@
 
         function render() {
             const container = document.getElementById('bottleList');
-            document.getElementById('count').innerText = inventory.length;
             container.innerHTML = inventory.map(item => `
-                <div class="glass p-5 rounded-2xl border-l-4 border-[#d4af37]">
-                    <div class="flex justify-between items-start">
-                        <h3 class="font-bold text-white">${item.nom}</h3>
-                        <span class="amber text-xs font-black italic">${item.note}/100</span>
-                    </div>
-                    <p class="text-zinc-500 text-[10px] uppercase font-bold mt-1">${item.type}</p>
-                    <p class="text-zinc-400 text-xs mt-3 italic">"${item.histoire}"</p>
-                    <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-[10px]">
-                        <span class="text-zinc-500 uppercase font-bold tracking-tighter">Prix estimé</span>
-                        <span class="text-white font-bold tracking-tighter">${item.prix}</span>
-                    </div>
+                <div class="bg-zinc-900 p-5 rounded-2xl border-l-4 border-amber-500">
+                    <h3 class="font-bold text-white text-sm">${item.nom}</h3>
+                    <p class="text-zinc-500 text-[10px] uppercase font-bold">${item.type} • ${item.note}/100</p>
+                    <p class="text-zinc-400 text-[11px] mt-2 italic">"${item.histoire}"</p>
                 </div>
             `).join('');
         }
-        render();
     </script>
 </body>
 </html>
