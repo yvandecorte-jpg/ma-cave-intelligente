@@ -26,7 +26,7 @@
             <button onclick="document.getElementById('cameraInput').click()" class="bg-[#d4af37] text-black w-full py-4 rounded-2xl font-black flex items-center justify-center gap-3 active:scale-95 transition-transform">
                 📸 SCANNER UNE BOUTEILLE
             </button>
-            <p class="text-[10px] text-gray-500 mt-3 uppercase tracking-widest">Analyse IA en temps réel</p>
+            <p class="text-[10px] text-gray-500 mt-3 uppercase tracking-widest text-center">Analyse IA en temps réel</p>
         </div>
     </div>
 
@@ -36,8 +36,7 @@
         <button onclick="render('Rhum')" class="pb-2 px-4 transition-all" id="btn-Rhum">RHUM</button>
     </nav>
 
-    <div id="bottleList" class="px-6 space-y-4">
-        </div>
+    <div id="bottleList" class="px-6 space-y-4"></div>
 
     <div id="loader" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
         <div class="text-center">
@@ -47,35 +46,29 @@
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const GEMINI_API_KEY ="AIzaSyBPq8gTvz_OyXSWQrHxMktuSz-5DHggT9o"; 
+        // --- METS TA CLÉ ICI ---
+        const GEMINI_API_KEY = "AIzaSyBPq8gTvz_OyXSWQrHxMktuSz-5DHggT9o"; 
+        
         let maCave = JSON.parse(localStorage.getItem('maCave_v1')) || [];
 
-        // --- FONCTIONS ---
         document.getElementById('cameraInput').onchange = async function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             document.getElementById('loader').classList.remove('hidden');
-
             const reader = new FileReader();
             reader.onload = async function() {
-                const base64Image = reader.result;
-                
                 try {
-                    const resultIA = await analyserAvecIA(base64Image);
+                    const resultIA = await analyserAvecIA(reader.result);
                     const nouvelleBouteille = {
                         id: Date.now(),
                         ...resultIA,
                         date: new Date().toLocaleDateString(),
                         possession: true
                     };
-                    
-                    maCave.unshift(nouvelleBouteille); // Ajoute au début
+                    maCave.unshift(nouvelleBouteille);
                     saveData();
                 } catch (err) {
                     alert("Erreur : " + err.message);
-                    console.error(err);
                 } finally {
                     document.getElementById('loader').classList.add('hidden');
                 }
@@ -84,17 +77,31 @@
         };
 
         async function analyserAvecIA(base64Data) {
-            const prompt = "Analyse cette image de bouteille. Réponds UNIQUEMENT en JSON avec ces champs : nom, type (Whisky ou Rhum ou Autre), prix, saveur (3 mots), histoire (1 phrase), note_expert (sur 100).";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const prompt = "Analyse cette image de bouteille. Réponds UNIQUEMENT par un objet JSON sans texte avant ou après, avec ces champs : nom, type (Whisky ou Rhum ou Autre), prix, saveur, histoire, note_expert (nombre entre 1 et 100).";
             
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { inlineData: { mimeType: "image/jpeg", data: base64Data.split(',')[1] } }
+                    ]
+                }]
+            };
+
+            const response = await fetch(url, {
                 method: 'POST',
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: base64Data.split(',')[1] } }] }]
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
-            
-            const data = await resp.json();
-            const textResponse = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "");
+
+            const data = await response.json();
+
+            if (data.error) throw new Error(data.error.message);
+            if (!data.candidates || !data.candidates[0].content) throw new Error("Identification impossible. Photo trop floue ?");
+
+            let textResponse = data.candidates[0].content.parts[0].text;
+            textResponse = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
             return JSON.parse(textResponse);
         }
 
@@ -114,15 +121,12 @@
             const list = document.getElementById('bottleList');
             const count = document.getElementById('count');
             list.innerHTML = '';
-            
-            // Gestion style boutons filtres
             ['Tous', 'Whisky', 'Rhum'].forEach(f => {
-                document.getElementById('btn-'+f).className = (f === filter) ? 'pb-2 px-4 tab-active' : 'pb-2 px-4 text-gray-500';
+                const el = document.getElementById('btn-'+f);
+                if(el) el.className = (f === filter) ? 'pb-2 px-4 tab-active' : 'pb-2 px-4 text-gray-500';
             });
-
             const filtered = maCave.filter(b => filter === 'Tous' || b.type === filter);
             count.innerText = filtered.length;
-
             filtered.forEach(b => {
                 list.innerHTML += `
                     <div class="glass p-5 rounded-2xl relative">
@@ -135,7 +139,7 @@
                             <div class="text-[#d4af37] font-black text-xl">${b.note_expert}<span class="text-[10px]">/100</span></div>
                         </div>
                         <p class="text-sm text-gray-300 mt-2 line-clamp-2 italic">"${b.histoire}"</p>
-                        <div class="grid grid-cols-2 gap-2 mt-4">
+                        <div class="grid grid-cols-2 gap-2 mt-4 text-left">
                             <div class="text-[10px] text-gray-500 uppercase">Saveurs: <span class="text-gray-200 block text-xs">${b.saveur}</span></div>
                             <div class="text-[10px] text-gray-500 uppercase">Prix estimé: <span class="text-gray-200 block text-xs">${b.prix}</span></div>
                         </div>
@@ -143,7 +147,6 @@
                 `;
             });
         }
-
         render();
     </script>
 </body>
