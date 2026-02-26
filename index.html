@@ -3,59 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Cave Pro 2026</title>
+    <title>Ma Cave Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --amber: #d4af37; --dark: #0a0a0a; }
-        body { background-color: var(--dark); color: #e5e5e5; font-family: system-ui, -apple-system, sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
-        .amber-btn { background-color: var(--amber); color: black; font-weight: 900; }
-        .card { border-left: 4px solid var(--amber); transition: all 0.3s ease; }
+        body { background-color: #0a0a0a; color: #e5e5e5; font-family: sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .amber { color: #d4af37; }
     </style>
 </head>
-<body class="max-w-md mx-auto min-h-screen flex flex-col pb-10">
+<body class="max-w-md mx-auto p-5">
 
-    <header class="p-6 glass sticky top-0 z-50 flex justify-between items-center mb-6">
-        <h1 class="text-xl font-black tracking-tighter uppercase italic">MY<span class="text-[#d4af37]">CELLAR</span></h1>
-        <div class="text-[10px] font-bold bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest">
-            <span id="count">0</span> FLACONS
+    <header class="flex justify-between items-center mb-8 pt-4">
+        <h1 class="text-xl font-bold tracking-tighter italic uppercase">MY<span class="amber">CELLAR</span></h1>
+        <div class="bg-zinc-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase">
+            <span id="count">0</span> BOUTEILLES
         </div>
     </header>
 
-    <div class="px-6 mb-8">
-        <div class="glass p-8 rounded-3xl text-center border-dashed border-2 border-white/10 shadow-2xl">
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-            <button onclick="document.getElementById('cameraInput').click()" class="amber-btn w-full py-5 rounded-2xl flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-transform">
-                📸 SCANNER UNE BOUTEILLE
-            </button>
-            <p id="status" class="text-[9px] text-zinc-500 mt-4 uppercase tracking-[0.2em]">Prêt pour l'analyse IA 2.5</p>
-        </div>
+    <div class="glass p-8 rounded-3xl text-center mb-8 border-2 border-dashed border-zinc-800">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        <button onclick="document.getElementById('cameraInput').click()" class="bg-[#d4af37] text-black w-full py-4 rounded-xl font-black shadow-lg active:scale-95 transition-transform">
+            📸 SCANNER UNE BOUTEILLE
+        </button>
     </div>
 
-    <div id="bottleList" class="px-6 space-y-4">
-        </div>
+    <div id="bottleList" class="space-y-4 mb-20"></div>
 
-    <div id="loader" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center z-[100]">
-        <div class="w-12 h-12 border-4 border-[#d4af37] border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-[#d4af37] font-black tracking-widest animate-pulse text-xs">IDENTIFICATION EN COURS...</p>
+    <div class="glass p-4 rounded-2xl mt-10 opacity-50 focus-within:opacity-100 transition-opacity">
+        <p class="text-[10px] font-bold uppercase mb-2 text-zinc-500">Configuration API</p>
+        <input type="password" id="keyInput" placeholder="Coller votre clé AIza... ici" class="w-full bg-black border border-zinc-800 p-3 rounded-lg text-xs text-white mb-2">
+        <button onclick="saveKey()" class="text-[10px] bg-zinc-800 px-4 py-2 rounded-lg font-bold uppercase hover:bg-zinc-700">Enregistrer la clé</button>
+    </div>
+
+    <div id="loader" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50">
+        <div class="w-10 h-10 border-4 border-[#d4af37] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="amber font-bold text-xs uppercase tracking-widest">Analyse en cours...</p>
     </div>
 
     <script>
-        // ================= CONFIGURATION SÉCURISÉE =================
-        // La clé n'est plus dans le code pour éviter le blocage Google (Leaked Key)
-        let API_KEY = localStorage.getItem('maCleIA_v2');
+        let inventory = JSON.parse(localStorage.getItem('myCellarDB_v4')) || [];
+        
+        // Charger la clé au démarrage
+        const savedKey = localStorage.getItem('maCleIA_v4');
+        if (savedKey) document.getElementById('keyInput').value = savedKey;
 
-        if (!API_KEY || API_KEY.length < 10) {
-            API_KEY = prompt("SÉCURITÉ : Collez votre clé API Gemini ici.\n(Elle sera stockée uniquement sur ce téléphone)");
-            if (API_KEY) localStorage.setItem('maCleIA_v2', API_KEY);
+        function saveKey() {
+            const val = document.getElementById('keyInput').value.trim();
+            if (val) {
+                localStorage.setItem('maCleIA_v4', val);
+                alert("Clé enregistrée avec succès !");
+            }
         }
 
-        let inventory = JSON.parse(localStorage.getItem('myCellarDB_v2')) || [];
-
-        // Gestion du scan
         document.getElementById('cameraInput').onchange = async (e) => {
             const file = e.target.files[0];
-            if (!file) return;
+            const API_KEY = localStorage.getItem('maCleIA_v4');
+
+            if (!API_KEY) {
+                alert("Erreur : Veuillez d'abord coller votre clé API en bas de la page et cliquer sur Enregistrer.");
+                return;
+            }
 
             document.getElementById('loader').classList.remove('hidden');
             const reader = new FileReader();
@@ -63,5 +70,58 @@
             reader.onload = async () => {
                 const base64Image = reader.result.split(',')[1];
                 try {
-                    // Utilisation du modèle Gemini 2.5 Flash détecté sur ta capture
-                    const URL = `https://
+                    // Utilisation de gemini-2.5-flash comme vu sur ta capture
+                    const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+                    
+                    const response = await fetch(URL, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            contents: [{ parts: [
+                                { text: "Réponds UNIQUEMENT en JSON : {\"nom\":\"...\",\"type\":\"Whisky ou Rhum\",\"prix\":\"...\",\"histoire\":\"...\",\"note\":80}" },
+                                { inlineData: { mimeType: "image/jpeg", data: base64Image } }
+                            ]}]
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error.message);
+
+                    let text = data.candidates[0].content.parts[0].text;
+                    text = text.replace(/```json|```/g, "").trim();
+                    const b = JSON.parse(text);
+                    
+                    inventory.unshift({ ...b, id: Date.now() });
+                    localStorage.setItem('myCellarDB_v4', JSON.stringify(inventory));
+                    render();
+                } catch (err) {
+                    alert("Erreur : " + err.message);
+                } finally {
+                    document.getElementById('loader').classList.add('hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+
+        function render() {
+            const container = document.getElementById('bottleList');
+            document.getElementById('count').innerText = inventory.length;
+            container.innerHTML = inventory.map(item => `
+                <div class="glass p-5 rounded-2xl border-l-4 border-[#d4af37]">
+                    <div class="flex justify-between items-start">
+                        <h3 class="font-bold text-white">${item.nom}</h3>
+                        <span class="amber text-xs font-black italic">${item.note}/100</span>
+                    </div>
+                    <p class="text-zinc-500 text-[10px] uppercase font-bold mt-1">${item.type}</p>
+                    <p class="text-zinc-400 text-xs mt-3 italic">"${item.histoire}"</p>
+                    <div class="mt-4 pt-3 border-t border-white/5 flex justify-between items-center text-[10px]">
+                        <span class="text-zinc-500 uppercase font-bold tracking-tighter">Prix estimé</span>
+                        <span class="text-white font-bold tracking-tighter">${item.prix}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        render();
+    </script>
+</body>
+</html>
