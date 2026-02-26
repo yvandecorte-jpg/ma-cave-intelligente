@@ -3,209 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Cave Pro 2026</title>
+    <title>Ma Cave Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        :root { --amber: #d4af37; --dark: #0f0f0f; }
-        body { background-color: var(--dark); color: #e5e5e5; font-family: 'Segoe UI', system-ui, sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
-        .amber-text { color: var(--amber); }
-        .amber-btn { background-color: var(--amber); color: black; font-weight: 800; }
-        .card { transition: transform 0.2s; border-left: 3px solid var(--amber); }
-        .card:active { transform: scale(0.98); }
-    </style>
 </head>
-<body class="max-w-md mx-auto min-h-screen flex flex-col">
-
-    <header class="p-6 glass sticky top-0 z-50 flex justify-between items-center mb-4">
-        <h1 class="text-xl font-black tracking-tighter uppercase">MY<span class="amber-text">CELLAR</span></h1>
-        <div id="stats" class="text-[10px] font-bold bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest">
-            <span id="count">0</span> Bouteilles
-        </div>
-    </header>
-
-    <div class="px-6 mb-6">
-        <div class="glass p-8 rounded-3xl text-center border-dashed border-2 border-white/10 shadow-2xl">
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-            <button onclick="document.getElementById('cameraInput').click()" class="amber-btn w-full py-5 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-yellow-900/20">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-                SCANNER UNE BOUTEILLE
-            </button>
-            <p class="text-[9px] text-gray-500 mt-4 uppercase tracking-[0.2em]">Identification par Intelligence Artificielle</p>
-        </div>
+<body class="bg-black text-white p-5 font-sans">
+    <h1 class="text-2xl font-bold text-yellow-600 mb-5">🥃 MA CAVE PRO</h1>
+    
+    <div class="bg-gray-900 p-6 rounded-2xl border-2 border-dashed border-gray-700 text-center mb-10">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        <button onclick="document.getElementById('cameraInput').click()" class="bg-yellow-600 text-black font-bold py-4 px-8 rounded-xl w-full">
+            📸 SCANNER UNE BOUTEILLE
+        </button>
     </div>
 
-    <div class="flex px-6 gap-2 mb-6 overflow-x-auto no-scrollbar">
-        <button onclick="updateUI('Tous')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Tous">Tous</button>
-        <button onclick="updateUI('Whisky')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Whisky">Whiskies</button>
-        <button onclick="updateUI('Rhum')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Rhum">Rhums</button>
-        <button onclick="updateUI('Autre')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Autre">Autres</button>
-    </div>
+    <div id="bottleList" class="space-y-4"></div>
 
-    <div id="bottleList" class="px-6 space-y-4 pb-24">
-        </div>
-
-    <div id="loader" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100]">
-        <div class="text-center">
-            <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-            <p class="amber-text font-black tracking-widest animate-pulse">ANALYSE EN COURS...</p>
-        </div>
+    <div id="loader" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center">
+        <p class="text-yellow-600 animate-pulse">L'IA analyse la bouteille...</p>
     </div>
 
     <script>
-        // ================= CONFIGURATION =================
+        // === CONFIGURATION ===
         const API_KEY = "AIzaSyBPq8gTvz_OyXSWQrHxMktuSz-5DHggT9o"; 
-        // =================================================
+        // =====================
 
-        let inventory = JSON.parse(localStorage.getItem('myCellarDB')) || [];
-        let currentFilter = 'Tous';
+        let cave = JSON.parse(localStorage.getItem('maCaveDB')) || [];
 
         document.getElementById('cameraInput').onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
 
-            showLoader(true);
+            document.getElementById('loader').classList.remove('hidden');
             const reader = new FileReader();
             
             reader.onload = async () => {
                 try {
-                    const dataIA = await callGeminiIA(reader.result);
-                    const newEntry = {
-                        id: Date.now(),
-                        ...dataIA,
-                        date: new Date().toLocaleDateString(),
-                        inStock: true
-                    };
-                    inventory.unshift(newEntry);
-                    saveAndRefresh();
+                    const result = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            contents: [{ parts: [
+                                { text: "Réponds UNIQUEMENT en JSON : { \"nom\": \"...\", \"type\": \"Whisky ou Rhum\", \"prix\": \"...\", \"histoire\": \"...\", \"note\": 85 }" },
+                                { inlineData: { mimeType: "image/jpeg", data: reader.result.split(',')[1] } }
+                            ]}]
+                        })
+                    });
+
+                    const data = await result.json();
+                    if (data.error) throw new Error(data.error.message);
+
+                    let text = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+                    const b = JSON.parse(text);
+                    
+                    cave.unshift({ ...b, id: Date.now() });
+                    localStorage.setItem('maCaveDB', JSON.stringify(cave));
+                    render();
                 } catch (err) {
-                    alert("ERREUR : " + err.message);
+                    alert("Détails de l'erreur : " + err.message);
                 } finally {
-                    showLoader(false);
+                    document.getElementById('loader').classList.add('hidden');
                 }
             };
             reader.readAsDataURL(file);
         };
 
-        async function callGeminiIA(base64Image) {
-            // Utilisation de l'URL v1 stable et du modèle flash
-            const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-            
-            const prompt = "Analyse cette bouteille. Réponds UNIQUEMENT en JSON avec : nom, type (Whisky, Rhum ou Autre), prix (environ), saveur (3 mots), histoire (1 phrase courte), note (sur 100).";
-            
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: prompt },
-                        { inlineData: { mimeType: "image/jpeg", data: base64Image.split(',')[1] } }
-                    ]
-                }]
-            };
-
-            const response = await fetch(URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const result = await response.json();
-
-            if (result.error) throw new Error(result.error.message);
-            
-            let cleanText = result.candidates[0].content.parts[0].text;
-            cleanText = cleanText.replace(/```json/g, "").replace(/```/g, "").trim();
-            
-            return JSON.parse(cleanText);
-        }
-
-        function saveAndRefresh() {
-            localStorage.setItem('myCellarDB', JSON.stringify(inventory));
-            updateUI(currentFilter);
-        }
-
-        function deleteItem(id) {
-            if(confirm("Supprimer cette bouteille ?")) {
-                inventory = inventory.filter(i => i.id !== id);
-                saveAndRefresh();
-            }
-        }
-
-        function toggleStock(id) {
-            const item = inventory.find(i => i.id === id);
-            if(item) {
-                item.inStock = !item.inStock;
-                saveAndRefresh();
-            }
-        }
-
-        function showLoader(show) {
-            document.getElementById('loader').classList.toggle('hidden', !show);
-        }
-
-        function updateUI(filter) {
-            currentFilter = filter;
+        function render() {
             const container = document.getElementById('bottleList');
-            const countEl = document.getElementById('count');
-            container.innerHTML = '';
-
-            // Update filters style
-            ['Tous', 'Whisky', 'Rhum', 'Autre'].forEach(f => {
-                const btn = document.getElementById('filter-'+f);
-                if(f === filter) {
-                    btn.classList.add('bg-amber-500', 'text-black');
-                    btn.classList.remove('bg-white/5');
-                } else {
-                    btn.classList.remove('bg-amber-500', 'text-black');
-                    btn.classList.add('bg-white/5');
-                }
-            });
-
-            const filtered = inventory.filter(i => filter === 'Tous' || i.type === filter);
-            countEl.innerText = filtered.length;
-
-            if(filtered.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-600 py-10 text-sm italic">Aucune bouteille ici...</p>';
-                return;
-            }
-
-            filtered.forEach(item => {
-                container.innerHTML += `
-                    <div class="glass p-5 rounded-2xl card relative overflow-hidden ${!item.inStock ? 'opacity-50' : ''}">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h2 class="font-bold text-white text-lg leading-tight mb-1">${item.nom}</h2>
-                                <span class="text-[9px] font-black uppercase tracking-widest text-amber-500">${item.type}</span>
-                            </div>
-                            <div class="text-2xl font-black amber-text italic">${item.note}<span class="text-[10px] ml-1">/100</span></div>
-                        </div>
-                        
-                        <p class="text-xs text-gray-400 mt-3 line-clamp-2 leading-relaxed">"${item.histoire}"</p>
-                        
-                        <div class="flex justify-between items-end mt-5">
-                            <div class="space-y-1">
-                                <div class="text-[9px] text-gray-500 uppercase font-bold">Saveurs</div>
-                                <div class="text-xs text-gray-200">${item.saveur}</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-[9px] text-gray-500 uppercase font-bold">Prix Moyen</div>
-                                <div class="text-xs text-white font-bold">${item.prix}</div>
-                            </div>
-                        </div>
-
-                        <div class="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
-                            <label class="flex items-center gap-2 text-[10px] font-bold uppercase cursor-pointer">
-                                <input type="checkbox" onchange="toggleStock(${item.id})" ${item.inStock ? 'checked' : ''} class="accent-amber-500">
-                                En Stock
-                            </label>
-                            <button onclick="deleteItem(${item.id})" class="text-[10px] text-red-900 font-bold uppercase">Supprimer</button>
-                        </div>
-                    </div>
-                `;
-            });
+            container.innerHTML = cave.map(b => `
+                <div class="bg-gray-900 p-5 rounded-xl border-l-4 border-yellow-600">
+                    <h2 class="text-xl font-bold">${b.nom}</h2>
+                    <p class="text-yellow-600 text-xs uppercase font-bold">${b.type} • Note: ${b.note}/100</p>
+                    <p class="text-gray-400 text-sm mt-2">${b.histoire}</p>
+                    <p class="text-white font-bold mt-2">Prix : ${b.prix}</p>
+                </div>
+            `).join('');
         }
-
-        // Init au chargement
-        updateUI('Tous');
+        render();
     </script>
 </body>
 </html>
