@@ -3,74 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Cave Pro - Debug</title>
+    <title>Ma Cave Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0a0a0a; color: #e5e5e5; font-family: sans-serif; }
+        .amber { color: #d4af37; }
+        .glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.1); }
+    </style>
 </head>
-<body class="bg-zinc-950 text-white p-5">
+<body class="max-w-md mx-auto p-6">
 
-    <h1 class="text-xl font-black text-center mb-8 amber tracking-tighter uppercase">🥃 My Cellar Debug</h1>
+    <h1 class="text-2xl font-black text-center mb-10 italic uppercase tracking-tighter">MY<span class="amber">CELLAR</span></h1>
 
-    <div class="bg-zinc-900 p-6 rounded-3xl mb-8 border border-zinc-800">
-        <p class="text-[10px] font-bold text-amber-500 uppercase mb-3">1. Configuration de la clé</p>
-        <input type="text" id="keyInput" placeholder="Coller la clé AIza..." 
-               class="w-full bg-black border border-zinc-700 p-4 rounded-xl text-xs mb-4 focus:border-amber-500 outline-none">
-        <button onclick="validerCle()" class="w-full bg-white text-black font-bold py-3 rounded-xl text-xs uppercase">
-            Enregistrer et Vérifier
-        </button>
-        <p id="keyStatus" class="text-[9px] mt-2 text-center text-zinc-500 italic">Aucune clé enregistrée</p>
-    </div>
-
-    <div id="scanZone" class="opacity-30 pointer-events-none transition-opacity duration-500 bg-zinc-900 p-8 rounded-3xl text-center border-2 border-dashed border-zinc-700">
+    <div class="glass p-10 rounded-[2rem] text-center mb-10 shadow-2xl">
         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-        <button onclick="document.getElementById('cameraInput').click()" class="bg-amber-500 text-black w-full py-5 rounded-2xl font-black">
-            📸 SCANNER LA BOUTEILLE
+        <button onclick="document.getElementById('cameraInput').click()" class="bg-[#d4af37] text-black w-full py-5 rounded-2xl font-black text-lg active:scale-95 transition-all">
+            📸 SCANNER ÉTIQUETTE
         </button>
-        <p class="text-[9px] mt-4 text-zinc-500 uppercase">L'IA Gemini 2.5 Flash s'activera ici</p>
     </div>
 
-    <div id="bottleList" class="mt-8 space-y-4 pb-20"></div>
+    <div id="bottleList" class="space-y-4"></div>
+
+    <div class="mt-20 p-6 glass rounded-2xl opacity-40 focus-within:opacity-100">
+        <p class="text-[10px] font-bold uppercase mb-3 text-zinc-500">Clé API Gemini active</p>
+        <input type="password" id="keyInput" placeholder="Coller ici la clé AIza..." class="w-full bg-black border border-zinc-800 p-3 rounded-xl text-xs text-white mb-3">
+        <button onclick="saveKey()" class="w-full bg-zinc-800 py-3 rounded-xl text-[10px] font-bold uppercase">Mettre à jour la clé</button>
+    </div>
 
     <div id="loader" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50">
-        <div class="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-amber-500 font-bold text-xs uppercase animate-pulse">Analyse en cours...</p>
+        <div class="w-12 h-12 border-4 border-[#d4af37] border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="amber font-bold text-xs animate-pulse uppercase tracking-widest">L'IA analyse le flacon...</p>
     </div>
 
     <script>
-        let inventory = JSON.parse(localStorage.getItem('myCellarDB_v5')) || [];
+        let inventory = JSON.parse(localStorage.getItem('myCellarDB_FINAL')) || [];
         
-        // Au démarrage, on vérifie si une clé existe
-        window.onload = () => {
-            const stored = localStorage.getItem('maCleIA_v5');
-            if (stored) {
-                document.getElementById('keyInput').value = stored;
-                activerScan();
-            }
-            render();
-        };
+        // Charger la clé
+        const savedKey = localStorage.getItem('maCleIA_FINAL');
+        if (savedKey) document.getElementById('keyInput').value = savedKey;
 
-        function validerCle() {
-            let input = document.getElementById('keyInput').value.trim();
-            // Nettoyage radical : on enlève les espaces, les sauts de ligne et les guillemets
-            input = input.replace(/[\s"']/g, "");
-            
-            if (input.startsWith("AIza")) {
-                localStorage.setItem('maCleIA_v5', input);
-                document.getElementById('keyStatus').innerText = "✅ Clé formatée et enregistrée !";
-                document.getElementById('keyStatus').classList.replace('text-zinc-500', 'text-green-500');
-                activerScan();
-                alert("La clé est prête. Vous pouvez maintenant scanner !");
-            } else {
-                alert("La clé doit commencer par 'AIza'. Vérifiez votre copier-coller.");
+        function saveKey() {
+            const val = document.getElementById('keyInput').value.trim().replace(/[\s"']/g, "");
+            if (val) {
+                localStorage.setItem('maCleIA_FINAL', val);
+                alert("Clé enregistrée !");
             }
-        }
-
-        function activerScan() {
-            document.getElementById('scanZone').classList.remove('opacity-30', 'pointer-events-none');
         }
 
         document.getElementById('cameraInput').onchange = async (e) => {
             const file = e.target.files[0];
-            const API_KEY = localStorage.getItem('maCleIA_v5');
+            const API_KEY = localStorage.getItem('maCleIA_FINAL');
+
+            if (!API_KEY) return alert("Collez votre clé en bas de page d'abord !");
 
             document.getElementById('loader').classList.remove('hidden');
             const reader = new FileReader();
@@ -78,35 +62,29 @@
             reader.onload = async () => {
                 const base64Image = reader.result.split(',')[1];
                 try {
-                    // Utilisation forcée du modèle 2.5 Flash (2026)
-                    const URL = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+                    // ON UTILISE L'URL V1BETA QUI A FONCTIONNÉ DANS TON NAVIGATEUR
+                    const URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
                     
                     const response = await fetch(URL, {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
                             contents: [{ parts: [
-                                { text: "JSON ONLY: {\"nom\":\"...\",\"type\":\"Whisky ou Rhum\",\"prix\":\"...\",\"histoire\":\"...\",\"note\":80}" },
+                                { text: "Réponds UNIQUEMENT en JSON : {\"nom\":\"...\",\"type\":\"Whisky ou Rhum\",\"prix\":\"...\",\"histoire\":\"...\",\"note\":80}" },
                                 { inlineData: { mimeType: "image/jpeg", data: base64Image } }
                             ]}]
                         })
                     });
 
                     const data = await response.json();
-                    
-                    if (data.error) {
-                        if (data.error.message.includes("API key")) {
-                            throw new Error("La clé est refusée par Google. Vérifiez qu'elle n'est pas expirée ou supprimée dans AI Studio.");
-                        }
-                        throw new Error(data.error.message);
-                    }
+                    if (data.error) throw new Error(data.error.message);
 
                     let text = data.candidates[0].content.parts[0].text;
                     text = text.replace(/```json|```/g, "").trim();
                     const b = JSON.parse(text);
                     
                     inventory.unshift({ ...b, id: Date.now() });
-                    localStorage.setItem('myCellarDB_v5', JSON.stringify(inventory));
+                    localStorage.setItem('myCellarDB_FINAL', JSON.stringify(inventory));
                     render();
                 } catch (err) {
                     alert("ERREUR : " + err.message);
@@ -120,13 +98,17 @@
         function render() {
             const container = document.getElementById('bottleList');
             container.innerHTML = inventory.map(item => `
-                <div class="bg-zinc-900 p-5 rounded-2xl border-l-4 border-amber-500">
-                    <h3 class="font-bold text-white text-sm">${item.nom}</h3>
-                    <p class="text-zinc-500 text-[10px] uppercase font-bold">${item.type} • ${item.note}/100</p>
-                    <p class="text-zinc-400 text-[11px] mt-2 italic">"${item.histoire}"</p>
+                <div class="glass p-6 rounded-2xl border-l-4 border-[#d4af37]">
+                    <h3 class="font-bold text-white uppercase tracking-tight">${item.nom}</h3>
+                    <p class="amber text-[10px] font-black mt-1 uppercase">${item.type} • ${item.note}/100</p>
+                    <p class="text-zinc-400 text-xs mt-3 leading-relaxed italic">"${item.histoire}"</p>
+                    <p class="text-white text-xs font-bold mt-4 pt-3 border-t border-white/5 flex justify-between">
+                        <span class="text-zinc-600">PRIX ESTIMÉ</span> ${item.prix}
+                    </p>
                 </div>
             `).join('');
         }
+        render();
     </script>
 </body>
 </html>
