@@ -3,151 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ma Cave Pro</title>
+    <title>Ma Cave Pro 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --amber: #d4af37; --dark: #121212; --card: #1e1e1e; }
-        body { background-color: var(--dark); color: #e5e5e5; font-family: 'Segoe UI', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .amber-glow { box-shadow: 0 0 15px rgba(212, 175, 55, 0.2); }
-        .tab-active { border-bottom: 3px solid var(--amber); color: var(--amber); }
+        :root { --amber: #d4af37; --dark: #0f0f0f; }
+        body { background-color: var(--dark); color: #e5e5e5; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
+        .amber-text { color: var(--amber); }
+        .amber-btn { background-color: var(--amber); color: black; font-weight: 800; }
+        .card { transition: transform 0.2s; border-left: 3px solid var(--amber); }
+        .card:active { transform: scale(0.98); }
     </style>
 </head>
-<body class="max-w-md mx-auto pb-20">
+<body class="max-w-md mx-auto min-h-screen flex flex-col">
 
-    <header class="sticky top-0 z-50 p-6 glass mb-6 flex justify-between items-center">
-        <h1 class="text-xl font-bold tracking-wider uppercase text-[#d4af37]">Ma Cave <span class="text-white">Collector</span></h1>
-        <span id="count" class="bg-[#d4af37] text-black text-xs font-bold px-2 py-1 rounded-full">0</span>
+    <header class="p-6 glass sticky top-0 z-50 flex justify-between items-center mb-4">
+        <h1 class="text-xl font-black tracking-tighter uppercase">MY<span class="amber-text">CELLAR</span></h1>
+        <div id="stats" class="text-[10px] font-bold bg-white/10 px-3 py-1 rounded-full uppercase tracking-widest">
+            <span id="count">0</span> Bouteilles
+        </div>
     </header>
 
-    <div class="px-6 mb-8">
-        <div class="glass p-6 rounded-3xl text-center border-dashed border-2 border-gray-600 amber-glow">
+    <div class="px-6 mb-6">
+        <div class="glass p-8 rounded-3xl text-center border-dashed border-2 border-white/10 shadow-2xl">
             <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-            <button onclick="document.getElementById('cameraInput').click()" class="bg-[#d4af37] text-black w-full py-4 rounded-2xl font-black flex items-center justify-center gap-3 active:scale-95 transition-transform">
-                📸 SCANNER UNE BOUTEILLE
+            <button onclick="document.getElementById('cameraInput').click()" class="amber-btn w-full py-5 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-yellow-900/20">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                SCANNER UNE BOUTEILLE
             </button>
-            <p class="text-[10px] text-gray-500 mt-3 uppercase tracking-widest text-center">Analyse IA en temps réel</p>
+            <p class="text-[9px] text-gray-500 mt-4 uppercase tracking-[0.2em]">Identification par Intelligence Artificielle</p>
         </div>
     </div>
 
-    <nav class="flex justify-around mb-6 text-sm font-bold border-b border-gray-800">
-        <button onclick="render('Tous')" class="pb-2 px-4 transition-all" id="btn-Tous">TOUS</button>
-        <button onclick="render('Whisky')" class="pb-2 px-4 transition-all" id="btn-Whisky">WHISKY</button>
-        <button onclick="render('Rhum')" class="pb-2 px-4 transition-all" id="btn-Rhum">RHUM</button>
-    </nav>
+    <div class="flex px-6 gap-2 mb-6 overflow-x-auto no-scrollbar">
+        <button onclick="updateUI('Tous')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Tous">Tous</button>
+        <button onclick="updateUI('Whisky')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Whisky">Whiskies</button>
+        <button onclick="updateUI('Rhum')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Rhum">Rhums</button>
+        <button onclick="updateUI('Autre')" class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap" id="filter-Autre">Autres</button>
+    </div>
 
-    <div id="bottleList" class="px-6 space-y-4"></div>
+    <div id="bottleList" class="px-6 space-y-4 pb-24">
+        </div>
 
-    <div id="loader" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+    <div id="loader" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100]">
         <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-[#d4af37] mx-auto mb-4"></div>
-            <p class="text-[#d4af37] font-bold">L'IA identifie votre bouteille...</p>
+            <div class="w-16 h-16 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+            <p class="amber-text font-black tracking-widest animate-pulse">ANALYSE EN COURS...</p>
         </div>
     </div>
 
     <script>
-        // --- METS TA CLÉ ICI ---
-        const GEMINI_API_KEY = "AIzaSyBPq8gTvz_OyXSWQrHxMktuSz-5DHggT9o"; 
-        
-        let maCave = JSON.parse(localStorage.getItem('maCave_v1')) || [];
+        // ================= CONFIGURATION =================
+        const API_KEY = "AIzaSyBPq8gTvz_OyXSWQrHxMktuSz-5DHggT9o
+"; 
+        // =================================================
 
-        document.getElementById('cameraInput').onchange = async function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            document.getElementById('loader').classList.remove('hidden');
-            const reader = new FileReader();
-            reader.onload = async function() {
-                try {
-                    const resultIA = await analyserAvecIA(reader.result);
-                    const nouvelleBouteille = {
-                        id: Date.now(),
-                        ...resultIA,
-                        date: new Date().toLocaleDateString(),
-                        possession: true
-                    };
-                    maCave.unshift(nouvelleBouteille);
-                    saveData();
-                } catch (err) {
-                    alert("Erreur : " + err.message);
-                } finally {
-                    document.getElementById('loader').classList.add('hidden');
-                }
-            };
-            reader.readAsDataURL(file);
-        };
+        let inventory = JSON.parse(localStorage.getItem('myCellarDB')) || [];
+        let currentFilter = 'Tous';
 
-        async function analyserAvecIA(base64Data) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
-            const prompt = "Analyse cette image de bouteille. Réponds UNIQUEMENT par un objet JSON sans texte avant ou après, avec ces champs : nom, type (Whisky ou Rhum ou Autre), prix, saveur, histoire, note_expert (nombre entre 1 et 100).";
-            
-            const payload = {
-                contents: [{
-                    parts: [
-                        { text: prompt },
-                        { inlineData: { mimeType: "image/jpeg", data: base64Data.split(',')[1] } }
-                    ]
-                }]
-            };
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (data.error) throw new Error(data.error.message);
-            if (!data.candidates || !data.candidates[0].content) throw new Error("Identification impossible. Photo trop floue ?");
-
-            let textResponse = data.candidates[0].content.parts[0].text;
-            textResponse = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
-            return JSON.parse(textResponse);
-        }
-
-        function saveData() {
-            localStorage.setItem('maCave_v1', JSON.stringify(maCave));
-            render();
-        }
-
-        function deleteBottle(id) {
-            if(confirm("Supprimer cette bouteille ?")) {
-                maCave = maCave.filter(b => b.id !== id);
-                saveData();
-            }
-        }
-
-        function render(filter = 'Tous') {
-            const list = document.getElementById('bottleList');
-            const count = document.getElementById('count');
-            list.innerHTML = '';
-            ['Tous', 'Whisky', 'Rhum'].forEach(f => {
-                const el = document.getElementById('btn-'+f);
-                if(el) el.className = (f === filter) ? 'pb-2 px-4 tab-active' : 'pb-2 px-4 text-gray-500';
-            });
-            const filtered = maCave.filter(b => filter === 'Tous' || b.type === filter);
-            count.innerText = filtered.length;
-            filtered.forEach(b => {
-                list.innerHTML += `
-                    <div class="glass p-5 rounded-2xl relative">
-                        <button onclick="deleteBottle(${b.id})" class="absolute top-4 right-4 text-gray-600 text-xs">✕</button>
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <h3 class="font-bold text-white text-lg">${b.nom}</h3>
-                                <span class="text-[10px] bg-gray-800 px-2 py-0.5 rounded uppercase tracking-tighter text-gray-400">${b.type}</span>
-                            </div>
-                            <div class="text-[#d4af37] font-black text-xl">${b.note_expert}<span class="text-[10px]">/100</span></div>
-                        </div>
-                        <p class="text-sm text-gray-300 mt-2 line-clamp-2 italic">"${b.histoire}"</p>
-                        <div class="grid grid-cols-2 gap-2 mt-4 text-left">
-                            <div class="text-[10px] text-gray-500 uppercase">Saveurs: <span class="text-gray-200 block text-xs">${b.saveur}</span></div>
-                            <div class="text-[10px] text-gray-500 uppercase">Prix estimé: <span class="text-gray-200 block text-xs">${b.prix}</span></div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-        render();
-    </script>
-</body>
-</html>
+        document.getElementById('cameraInput').onchange = async (e) => {
