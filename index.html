@@ -74,7 +74,7 @@
                     maCave.unshift(nouvelleBouteille); // Ajoute au début
                     saveData();
                 } catch (err) {
-                    alert("Erreur lors de l'analyse. Vérifiez votre clé API ou connexion.");
+                    alert("Erreur : " + err.message);
                     console.error(err);
                 } finally {
                     document.getElementById('loader').classList.add('hidden');
